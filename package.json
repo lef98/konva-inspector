@@ -1,0 +1,54 @@
+{
+  "name": "konva-inspector",
+  "version": "0.1.0",
+  "description": "Inspector and performance panel for Konva stages",
+  "license": "MIT",
+  "author": "Leo Fürbaß",
+  "homepage": "https://github.com/lef98/konva-inspector",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/lef98/konva-inspector.git"
+  },
+  "keywords": [
+    "konva",
+    "canvas",
+    "inspector",
+    "devtools",
+    "debug",
+    "performance"
+  ],
+  "main": "dist/index.cjs",
+  "module": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "sideEffects": [
+    "**/*.css"
+  ],
+  "peerDependencies": {
+    "konva": "^9.0.0 || ^10.0.0"
+  },
+  "devDependencies": {
+    "konva": "^10.0.0",
+    "tsup": "^8.0.0",
+    "typescript": "^5.4.0",
+    "vite": "^5.0.0"
+  },
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "typecheck": "tsc --noEmit",
+    "example": "vite example --host 0.0.0.0",
+    "prepublishOnly": "npm run typecheck && npm run build"
+  }
+}
