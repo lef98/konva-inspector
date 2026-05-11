@@ -1,6 +1,6 @@
 {
   "name": "konva-inspector",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "A lightweight devtools inspector for Konva.js — visualize the node tree, monitor canvas performance, and track event frequency in real time.",  
   "license": "MIT",
   "author": "Leo Fürbaß",
