@@ -50,7 +50,13 @@ export function renderPanel(root: HTMLElement, store: any) {
     const detailsEl = root.querySelector(".ki-details") as HTMLElement;
     const treeScroll = treeEl.scrollTop;
     const detailsScroll = detailsEl.scrollTop;
-    renderTree(treeEl, state.tree, store);
+    renderTree(
+      treeEl,
+      state.tree,
+      state.selectedNode?.konvaId ?? null,
+      state.expandedNodeIds,
+      store
+    );
     renderDetails(detailsEl, state.selectedNode);
     treeEl.scrollTop = treeScroll;
     detailsEl.scrollTop = detailsScroll;

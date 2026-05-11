@@ -11,7 +11,7 @@ export function patchDrawMethods(stage: Konva.Stage, store: any) {
     const originalDraw = layer.draw;
     const originalBatchDraw = layer.batchDraw;
 
-    layer.draw = function (...args: any[]) {
+    layer.draw = function (this: Konva.Layer, ...args: any[]) {
       const start = performance.now();
       const result = originalDraw.apply(this, args as any);
       const duration = performance.now() - start;
@@ -26,7 +26,7 @@ export function patchDrawMethods(stage: Konva.Stage, store: any) {
       return result;
     } as any;
 
-    layer.batchDraw = function (...args: any[]) {
+    layer.batchDraw = function (this: Konva.Layer, ...args: any[]) {
       const start = performance.now();
       const result = originalBatchDraw.apply(this, args as any);
       const duration = performance.now() - start;

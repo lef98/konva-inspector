@@ -1,6 +1,6 @@
-import type { NodeSnapshot } from "../types";
+import type { NodeDetails } from "../types";
 
-export function renderDetails(container: HTMLElement, node: NodeSnapshot | null) {
+export function renderDetails(container: HTMLElement, node: NodeDetails | null) {
   if (!node) {
     container.innerHTML = `<div class="ki-empty">Select a node</div>`;
     return;
@@ -11,6 +11,7 @@ export function renderDetails(container: HTMLElement, node: NodeSnapshot | null)
       <div><strong>Type:</strong> ${node.type}</div>
       <div><strong>ID:</strong> ${node.id}</div>
       <div><strong>Name:</strong> ${node.name ?? "-"}</div>
+      <div><strong>Children:</strong> ${node.childCount}</div>
       <div><strong>Visible:</strong> ${String(node.meta.visible)}</div>
       <div><strong>Listening:</strong> ${String(node.meta.listening)}</div>
       <div><strong>Cached:</strong> ${String(node.meta.cached)}</div>
@@ -24,7 +25,7 @@ export function renderDetails(container: HTMLElement, node: NodeSnapshot | null)
 
 function escapeHtml(value: string) {
   return value
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;");
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
 }

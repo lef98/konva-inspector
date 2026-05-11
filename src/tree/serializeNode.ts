@@ -1,5 +1,5 @@
 import Konva from "konva";
-import type { NodeSnapshot } from "../types";
+import type { NodeDetails, NodeSnapshot } from "../types";
 
 export function serializeNode(node: Konva.Node): NodeSnapshot {
   const anyNode = node as any;
@@ -15,7 +15,24 @@ export function serializeNode(node: Konva.Node): NodeSnapshot {
     type: node.getClassName(),
     name: node.name() || undefined,
     parentId: node.getParent()?.id() || undefined,
-    children,
+    children
+  };
+}
+
+export function serializeNodeDetails(node: Konva.Node): NodeDetails {
+  const anyNode = node as any;
+  const children =
+    typeof anyNode.getChildren === "function"
+      ? (anyNode.getChildren() as Konva.Node[])
+      : [];
+
+  return {
+    id: node.id() || `anon-${anyNode._id}`,
+    konvaId: anyNode._id,
+    type: node.getClassName(),
+    name: node.name() || undefined,
+    parentId: node.getParent()?.id() || undefined,
+    childCount: children.length,
     attrs: { ...node.getAttrs() },
     meta: {
       visible: node.visible(),

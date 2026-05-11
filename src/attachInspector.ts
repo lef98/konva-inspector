@@ -6,7 +6,6 @@ import { createFpsMonitor } from "./perf/fpsMonitor";
 import { createEventMonitor } from "./perf/eventMonitor";
 import { createOverlay } from "./overlay/overlayLayer";
 import { mountPanel } from "./ui/mountPanel";
-import { findSnapshotByKonvaId } from "./utils/treeSearch";
 import { isHotkeyPressed } from "./utils/keyboard";
 import type { InspectorHandle, InspectorOptions } from "./types";
 
@@ -15,7 +14,7 @@ export function attachKonvaInspector(
   options: InspectorOptions = {}
 ): InspectorHandle {
   const opts = {
-    enabled: true,
+    enabled: false,
     hotkey: "Ctrl+Shift+K",
     dock: "right" as const,
     trackPerformance: true,
@@ -40,14 +39,16 @@ export function attachKonvaInspector(
   }
 
   function open() {
+    rescan();
+    store.refreshPerfSummary();
     isOpen = true;
     panel.show();
-    rescan();
   }
 
   function close() {
     isOpen = false;
     panel.hide();
+    store.clearSelectedNode();
     overlay?.clear();
   }
 
@@ -64,15 +65,10 @@ export function attachKonvaInspector(
   }
 
   function onStageClick(e: Konva.KonvaEventObject<MouseEvent>) {
-    const clicked = e.target;
-    const tree = store.getState().tree;
-    if (!tree) return;
+    if (!isOpen) return;
 
-    const snapshot = findSnapshotByKonvaId(tree, (clicked as any)._id);
-    if (snapshot) {
-      store.setSelectedNode(snapshot);
-      overlay?.highlight(clicked);
-    }
+    const clicked = e.target;
+    store.selectNode((clicked as any)._id);
   }
 
   store.subscribeSelection((node) => {
