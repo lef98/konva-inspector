@@ -22,6 +22,15 @@ export type NodeSnapshot = {
   name?: string;
   parentId?: string;
   children: NodeSnapshot[];
+};
+
+export type NodeDetails = {
+  id: string;
+  konvaId: number | string;
+  type: string;
+  name?: string;
+  parentId?: string;
+  childCount: number;
   attrs: Record<string, unknown>;
   meta: {
     visible: boolean;

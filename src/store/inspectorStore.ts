@@ -1,6 +1,8 @@
-import type { NodeSnapshot, PerfSnapshot, EventFrequency, CanvasLayerInfo, CachedNodeInfo } from "../types";
+import type { NodeSnapshot, NodeDetails, PerfSnapshot, EventFrequency, CanvasLayerInfo, CachedNodeInfo } from "../types";
 import { buildWarnings } from "../perf/warnings";
 import type Konva from "konva";
+import { serializeNodeDetails } from "../tree/serializeNode";
+import { findSnapshotByKonvaId, findSnapshotPathByKonvaId } from "../utils/treeSearch";
 
 type EventRecord = {
   type: string;
@@ -17,7 +19,8 @@ type DrawRecord = {
 
 type State = {
   tree: NodeSnapshot | null;
-  selectedNode: NodeSnapshot | null;
+  selectedNode: NodeDetails | null;
+  expandedNodeIds: Set<string>;
   fps: number;
   draws: DrawRecord[];
   events: EventRecord[];
@@ -27,11 +30,12 @@ type State = {
 
 export function createInspectorStore(stage: Konva.Stage) {
   const listeners = new Set<() => void>();
-  const selectionListeners = new Set<(node: NodeSnapshot | null) => void>();
+  const selectionListeners = new Set<(node: NodeDetails | null) => void>();
 
   const state: State = {
     tree: null,
     selectedNode: null,
+    expandedNodeIds: new Set<string>(),
     fps: 0,
     draws: [],
     events: [],
@@ -55,6 +59,19 @@ export function createInspectorStore(stage: Konva.Stage) {
     }
   };
 
+  let sceneSummary = {
+    nodeCounts: {
+      total: 0,
+      byType: {} as Record<string, number>,
+      listening: 0,
+      visible: 0,
+      cached: 0,
+      offscreen: 0
+    },
+    canvasInfo: [] as CanvasLayerInfo[],
+    cachedNodes: [] as CachedNodeInfo[]
+  };
+
   function emit() {
     listeners.forEach((fn) => fn());
   }
@@ -71,34 +88,44 @@ export function createInspectorStore(stage: Konva.Stage) {
 
     if (!node) return result;
 
-    const stageW = stage.width();
-    const stageH = stage.height();
-
     function walk(n: NodeSnapshot) {
       result.total += 1;
       result.byType[n.type] = (result.byType[n.type] || 0) + 1;
-      if (n.meta.listening) result.listening += 1;
-      if (n.meta.visible) result.visible += 1;
-      if (n.meta.cached) result.cached += 1;
       n.children.forEach(walk);
     }
 
     walk(node);
 
-    // Offscreen count: check all visible shapes using Konva absolute positions.
-    const shapes = stage.find((n: Konva.Node) => n.getType() === "Shape");
+    return result;
+  }
+
+  function findKonvaNodeById(konvaId: number | string) {
+    return (
+      stage.findOne((node: Konva.Node) => String((node as any)._id) === String(konvaId)) ?? null
+    );
+  }
+
+  function getOffscreenCount() {
+    const stageW = stage.width();
+    const stageH = stage.height();
+    const shapes = stage.find((node: Konva.Node) => node.getType() === "Shape");
+
+    let offscreen = 0;
+
     for (const shape of shapes) {
+      const anyShape = shape as any;
       const pos = shape.getAbsolutePosition();
-      const w = (shape as any).width ? (shape as any).width() : 0;
-      const h = (shape as any).height ? (shape as any).height() : 0;
-      const right = pos.x + w;
-      const bottom = pos.y + h;
+      const width = typeof anyShape.width === "function" ? anyShape.width() : 0;
+      const height = typeof anyShape.height === "function" ? anyShape.height() : 0;
+      const right = pos.x + width;
+      const bottom = pos.y + height;
+
       if (right < 0 || pos.x > stageW || bottom < 0 || pos.y > stageH) {
-        result.offscreen += 1;
+        offscreen += 1;
       }
     }
 
-    return result;
+    return offscreen;
   }
 
   function getCanvasInfo(): CanvasLayerInfo[] {
@@ -137,6 +164,28 @@ export function createInspectorStore(stage: Konva.Stage) {
       });
     }
     return results;
+  }
+
+  function refreshSceneSummary() {
+    const baseCounts = countNodes(state.tree);
+
+    sceneSummary = {
+      nodeCounts: {
+        ...baseCounts,
+        listening: stage.find((node: Konva.Node) => node.listening()).length,
+        visible: stage.find((node: Konva.Node) => node.visible()).length,
+        cached: stage.find((node: Konva.Node) => (node as any).isCached?.()).length,
+        offscreen: getOffscreenCount()
+      },
+      canvasInfo: getCanvasInfo(),
+      cachedNodes: getCachedNodeInfo()
+    };
+  }
+
+  function setSelectedNodeDetails(node: NodeDetails | null) {
+    state.selectedNode = node;
+    selectionListeners.forEach((fn) => fn(node));
+    emit();
   }
 
   function refreshPerfSummary() {
@@ -201,15 +250,12 @@ export function createInspectorStore(stage: Konva.Stage) {
       };
     });
 
-    const nodeCounts = countNodes(state.tree);
-    const canvasInfo = getCanvasInfo();
-    const cachedNodes = getCachedNodeInfo();
     const warnings = buildWarnings({
-      totalNodes: nodeCounts.total,
-      listeningNodes: nodeCounts.listening,
-      cachedNodes: nodeCounts.cached,
-      offscreenNodes: nodeCounts.offscreen,
-      canvasInfo,
+      totalNodes: sceneSummary.nodeCounts.total,
+      listeningNodes: sceneSummary.nodeCounts.listening,
+      cachedNodes: sceneSummary.nodeCounts.cached,
+      offscreenNodes: sceneSummary.nodeCounts.offscreen,
+      canvasInfo: sceneSummary.canvasInfo,
       layerStats
     });
 
@@ -218,9 +264,9 @@ export function createInspectorStore(stage: Konva.Stage) {
       drawCalls,
       batchDrawCalls,
       layerStats,
-      canvasInfo,
-      cachedNodes,
-      nodeCounts,
+      canvasInfo: sceneSummary.canvasInfo,
+      cachedNodes: sceneSummary.cachedNodes,
+      nodeCounts: sceneSummary.nodeCounts,
       warnings
     };
 
@@ -235,29 +281,54 @@ export function createInspectorStore(stage: Konva.Stage) {
       listeners.add(fn);
       return () => listeners.delete(fn);
     },
-    subscribeSelection(fn: (node: NodeSnapshot | null) => void) {
+    subscribeSelection(fn: (node: NodeDetails | null) => void) {
       selectionListeners.add(fn);
       return () => selectionListeners.delete(fn);
     },
     setTree(tree: NodeSnapshot) {
       state.tree = tree;
+      if (state.expandedNodeIds.size === 0) {
+        state.expandedNodeIds.add(String(tree.konvaId));
+      }
+      if (state.selectedNode) {
+        const selectedNode = findKonvaNodeById(state.selectedNode.konvaId);
+        state.selectedNode = selectedNode ? serializeNodeDetails(selectedNode) : null;
+        if (!state.selectedNode) {
+          selectionListeners.forEach((fn) => fn(null));
+        }
+      }
+      refreshSceneSummary();
       refreshPerfSummary();
     },
-    setSelectedNode(node: NodeSnapshot | null) {
-      state.selectedNode = node;
-      selectionListeners.forEach((fn) => fn(node));
+    selectNode(konvaId: number | string) {
+      if (!state.tree) return;
+
+      const snapshot = findSnapshotByKonvaId(state.tree, konvaId);
+      if (!snapshot) return;
+
+      const path = findSnapshotPathByKonvaId(state.tree, konvaId) ?? [snapshot];
+      path.forEach((entry) => state.expandedNodeIds.add(String(entry.konvaId)));
+
+      const node = findKonvaNodeById(konvaId);
+      setSelectedNodeDetails(node ? serializeNodeDetails(node) : null);
+    },
+    clearSelectedNode() {
+      setSelectedNodeDetails(null);
+    },
+    toggleNodeExpanded(konvaId: number | string) {
+      const key = String(konvaId);
+      if (state.expandedNodeIds.has(key)) state.expandedNodeIds.delete(key);
+      else state.expandedNodeIds.add(key);
       emit();
     },
     setFps(fps: number) {
       state.fps = fps;
-      refreshPerfSummary();
     },
     recordDraw(draw: Omit<DrawRecord, "ts">) {
       state.draws.push({
         ...draw,
         ts: performance.now()
       });
-      refreshPerfSummary();
     },
     recordEvent(type: string) {
       state.events.push({ type, ts: performance.now() });

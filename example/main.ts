@@ -38,7 +38,6 @@ layer.add(circle);
 layer.draw();
 
 attachKonvaInspector(stage, {
-  enabled: true,
   trackPerformance: true,
   highlightSelection: true
 });

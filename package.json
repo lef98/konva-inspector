@@ -1,7 +1,7 @@
 {
   "name": "konva-inspector",
-  "version": "0.1.0",
-  "description": "Inspector and performance panel for Konva stages",
+  "version": "0.2.1",
+  "description": "A lightweight devtools inspector for Konva.js — visualize the node tree, monitor canvas performance, and track event frequency in real time.",
   "license": "MIT",
   "author": "Leo Fürbaß",
   "homepage": "https://github.com/lef98/konva-inspector",
@@ -17,14 +17,14 @@
     "debug",
     "performance"
   ],
-  "main": "dist/index.cjs",
-  "module": "dist/index.js",
+  "main": "dist/index.js",
+  "module": "dist/index.mjs",
   "types": "dist/index.d.ts",
   "exports": {
     ".": {
-      "import": "./dist/index.js",
-      "require": "./dist/index.cjs",
-      "types": "./dist/index.d.ts"
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js"
     }
   },
   "files": [
