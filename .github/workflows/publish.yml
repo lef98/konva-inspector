@@ -1,0 +1,187 @@
+name: Publish npm package
+
+on:
+  pull_request:
+    branches:
+      - main
+    types:
+      - closed
+
+permissions:
+  contents: write
+  id-token: write
+  issues: read
+  pull-requests: read
+
+concurrency:
+  group: publish-main
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: Publish after merge
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Resolve release label
+        id: release
+        run: |
+          node <<'NODE'
+          const fs = require("fs");
+
+          const event = JSON.parse(fs.readFileSync(process.env.GITHUB_EVENT_PATH, "utf8"));
+          const labels = event.pull_request.labels.map((label) => label.name.toLowerCase());
+          const releaseLabels = ["patch", "minor", "major"].filter((label) => labels.includes(label));
+
+          if (releaseLabels.length === 0) {
+            fs.appendFileSync(process.env.GITHUB_OUTPUT, "should_publish=false\n");
+            console.log("No patch/minor/major label found. Skipping publish.");
+            process.exit(0);
+          }
+
+          if (releaseLabels.length > 1) {
+            throw new Error(`Expected one release label, found: ${releaseLabels.join(", ")}`);
+          }
+
+          fs.appendFileSync(process.env.GITHUB_OUTPUT, "should_publish=true\n");
+          fs.appendFileSync(process.env.GITHUB_OUTPUT, `release_type=${releaseLabels[0]}\n`);
+          NODE
+
+      - name: Checkout main
+        if: steps.release.outputs.should_publish == 'true'
+        uses: actions/checkout@v6
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Setup Node
+        if: steps.release.outputs.should_publish == 'true'
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+          package-manager-cache: false
+
+      - name: Install dependencies
+        if: steps.release.outputs.should_publish == 'true'
+        run: npm ci
+
+      - name: Bump package version
+        if: steps.release.outputs.should_publish == 'true'
+        id: version
+        run: |
+          npm version "${{ steps.release.outputs.release_type }}" --no-git-tag-version
+          VERSION="$(node -p "require('./package.json').version")"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Typecheck and build
+        if: steps.release.outputs.should_publish == 'true'
+        run: |
+          npm run typecheck
+          npm run build
+
+      - name: Build changelog
+        if: steps.release.outputs.should_publish == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          node <<'NODE'
+          const fs = require("fs");
+          const { execFileSync } = require("child_process");
+
+          const event = JSON.parse(fs.readFileSync(process.env.GITHUB_EVENT_PATH, "utf8"));
+          const pr = event.pull_request;
+          const body = pr.body || "";
+          const defaultRepo = process.env.GITHUB_REPOSITORY;
+          const groups = ["feature", "bug", "performance", "infrastructure"];
+
+          function issueRefsFromCloses(text) {
+            const refs = new Map();
+            const closeClauses = text.matchAll(/\bcloses?\s+([^\n.]+)/gi);
+
+            for (const clause of closeClauses) {
+              const refMatches = clause[1].matchAll(/(?:(?<repo>[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+)#(?<number>\d+)|#(?<localNumber>\d+))/g);
+
+              for (const match of refMatches) {
+                const repo = match.groups.repo || defaultRepo;
+                const number = match.groups.number || match.groups.localNumber;
+                refs.set(`${repo}#${number}`, { repo, number });
+              }
+            }
+
+            return Array.from(refs.values());
+          }
+
+          function githubApi(path) {
+            return JSON.parse(execFileSync("gh", ["api", path], { encoding: "utf8" }));
+          }
+
+          const entries = {
+            feature: [],
+            bug: [],
+            performance: [],
+            infrastructure: [],
+            other: []
+          };
+
+          for (const ref of issueRefsFromCloses(body)) {
+            const issue = githubApi(`/repos/${ref.repo}/issues/${ref.number}`);
+            const labels = issue.labels.map((label) => label.name.toLowerCase());
+            const group = groups.find((name) => labels.includes(name)) || "other";
+            entries[group].push(`- ${issue.title} (${issue.html_url})`);
+          }
+
+          const lines = [
+            `## v${process.env.VERSION}`,
+            "",
+            `Released from PR #${pr.number}: ${pr.title}`,
+            ""
+          ];
+
+          let hasEntries = false;
+          const headings = {
+            feature: "Features",
+            bug: "Bugs",
+            performance: "Performance",
+            infrastructure: "Infrastructure",
+            other: "Other"
+          };
+
+          for (const group of [...groups, "other"]) {
+            if (entries[group].length === 0) continue;
+            hasEntries = true;
+            lines.push(`### ${headings[group]}`, "", ...entries[group], "");
+          }
+
+          if (!hasEntries) {
+            lines.push("No issues were referenced with `closes` in the PR description.", "");
+          }
+
+          fs.writeFileSync("RELEASE_CHANGELOG.md", lines.join("\n"));
+          NODE
+
+      - name: Commit version and create tag
+        if: steps.release.outputs.should_publish == 'true'
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add package.json package-lock.json
+          git commit -m "chore(release): v${VERSION}"
+          git tag -a "v${VERSION}" -m "v${VERSION}"
+          git push origin HEAD:main
+          git push origin "v${VERSION}"
+
+      - name: Publish to npm
+        if: steps.release.outputs.should_publish == 'true'
+        run: npm publish
+
+      - name: Create GitHub release
+        if: steps.release.outputs.should_publish == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: gh release create "v${VERSION}" --title "v${VERSION}" --notes-file RELEASE_CHANGELOG.md
