@@ -20,11 +20,25 @@ import { attachKonvaInspector } from "konva-inspector";
 
 const inspector = attachKonvaInspector(stage, {
   hotkey: "Alt+I",
+  backgroundColor: "rgba(17, 17, 17, 0.92)",
+  textColor: "#f5f5f5",
   trackPerformance: true
 });
 ```
 
 By default the inspector starts closed and mounts only after the hotkey is pressed.
+`backgroundColor` and `textColor` are applied directly to the inspector root as inline CSS variables, and the panel stylesheet explicitly uses those values so the panel does not inherit conflicting colors from the inspected page.
+
+## Run the example in Windows WSL
+
+From a WSL shell in this repository:
+
+```bash
+npm install
+npm run example
+```
+
+Vite prints a local URL such as `http://localhost:5173/`. Open that URL in your Windows browser. The example starts with the inspector closed; press `Ctrl+Shift+K` to open it.
 
 ## Features
 

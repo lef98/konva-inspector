@@ -1,7 +1,13 @@
 import "./panel.css";
 import { renderPanel } from "./renderPanel";
 
-export function mountPanel(store: any, options: { dock: "left" | "right" | "bottom" }) {
+type PanelOptions = {
+  dock: "left" | "right" | "bottom";
+  backgroundColor: string;
+  textColor: string;
+};
+
+export function mountPanel(store: any, options: PanelOptions) {
   let root: HTMLDivElement | null = null;
   let unsubscribe: (() => void) | null = null;
 
@@ -10,6 +16,8 @@ export function mountPanel(store: any, options: { dock: "left" | "right" | "bott
 
     root = document.createElement("div");
     root.className = `konva-inspector konva-inspector--${options.dock}`;
+    root.style.setProperty("--ki-background-color", options.backgroundColor);
+    root.style.setProperty("--ki-text-color", options.textColor);
     document.body.appendChild(root);
 
     unsubscribe = store.subscribe(() => {

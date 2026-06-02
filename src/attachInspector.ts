@@ -17,6 +17,8 @@ export function attachKonvaInspector(
     enabled: false,
     hotkey: "Ctrl+Shift+K",
     dock: "right" as const,
+    backgroundColor: "rgba(17, 17, 17, 0.85)",
+    textColor: "#eee",
     trackPerformance: true,
     highlightSelection: true,
     pollInterval: 500,
@@ -28,7 +30,11 @@ export function attachKonvaInspector(
   const fpsMonitor = opts.trackPerformance ? createFpsMonitor(store) : null;
   const unpatch = opts.trackPerformance ? patchDrawMethods(stage, store) : () => {};
   const eventMonitor = createEventMonitor(stage, store);
-  const panel = mountPanel(store, { dock: opts.dock });
+  const panel = mountPanel(store, {
+    dock: opts.dock,
+    backgroundColor: opts.backgroundColor,
+    textColor: opts.textColor
+  });
 
   let isOpen = !!opts.enabled;
   let intervalId: number | null = null;

@@ -38,6 +38,8 @@ layer.add(circle);
 layer.draw();
 
 attachKonvaInspector(stage, {
+  backgroundColor: "rgba(17, 17, 17, 0.92)",
+  textColor: "#f5f5f5",
   trackPerformance: true,
   highlightSelection: true
 });

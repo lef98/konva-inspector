@@ -2,6 +2,8 @@ export type InspectorOptions = {
   enabled?: boolean;
   hotkey?: string;
   dock?: "left" | "right" | "bottom";
+  backgroundColor?: string;
+  textColor?: string;
   trackPerformance?: boolean;
   highlightSelection?: boolean;
   pollInterval?: number;
