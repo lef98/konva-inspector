@@ -81,4 +81,7 @@ document.getElementById('spawn-offscreen-btn').addEventListener('click', () => {
 // Spawn a few nodes on load
 for (let i = 0; i < 3; i++) spawnNode();
 
-attachKonvaInspector(stage);
+attachKonvaInspector(stage, {
+  backgroundColor: 'rgba(17, 17, 17, 0.92)',
+  textColor: '#f5f5f5',
+});

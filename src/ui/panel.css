@@ -3,15 +3,28 @@
   top: 0;
   bottom: 0;
   width: 360px;
-  background: rgba(17, 17, 17, 0.85);
+  background: var(--ki-background-color, rgba(17, 17, 17, 0.85)) !important;
   backdrop-filter: blur(6px);
-  color: #eee;
-  font: 12px/1.4 sans-serif;
+  color: var(--ki-text-color, #eee) !important;
+  font: 12px/1.4 sans-serif !important;
   z-index: 999999;
   border-left: 1px solid #333;
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  color-scheme: dark;
+  box-sizing: border-box;
+  isolation: isolate;
+}
+
+.konva-inspector,
+.konva-inspector * {
+  box-sizing: border-box;
+}
+
+.konva-inspector :where(*, button, pre, strong) {
+  color: inherit !important;
+  font-family: sans-serif !important;
 }
 
 .konva-inspector--right {
@@ -47,10 +60,10 @@
 .ki-tab {
   flex: 1;
   padding: 7px 0;
-  background: none;
-  border: none;
-  border-right: 1px solid #333;
-  color: #777;
+  background: none !important;
+  border: none !important;
+  border-right: 1px solid #333 !important;
+  color: #777 !important;
   cursor: pointer;
   font: 11px/1.4 sans-serif;
   font-weight: 600;
@@ -63,13 +76,13 @@
 }
 
 .ki-tab:hover {
-  color: #ccc;
-  background: rgba(255, 255, 255, 0.04);
+  color: #ccc !important;
+  background: rgba(255, 255, 255, 0.04) !important;
 }
 
 .ki-tab--active {
-  color: #eee;
-  background: rgba(255, 255, 255, 0.06);
+  color: var(--ki-text-color, #eee) !important;
+  background: rgba(255, 255, 255, 0.06) !important;
   box-shadow: inset 0 -2px 0 #4f8ef7;
 }
 
@@ -126,9 +139,9 @@
   align-items: center;
   justify-content: center;
   padding: 0;
-  border: none;
-  background: transparent;
-  color: #aaa;
+  border: none !important;
+  background: transparent !important;
+  color: #aaa !important;
   cursor: pointer;
   flex-shrink: 0;
 }
@@ -162,7 +175,7 @@
   gap: 8px;
   padding: 4px 0 6px;
   border-bottom: 1px solid #333;
-  color: #777;
+  color: #777 !important;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.04em;
@@ -179,18 +192,18 @@
 }
 
 .ki-canvas-val {
-  color: #aaa;
+  color: #aaa !important;
   text-align: right;
 }
 
 .ki-canvas-ratio {
-  color: #4ff77a;
+  color: #4ff77a !important;
   text-align: right;
   min-width: 36px;
 }
 
 .ki-canvas-ratio--warn {
-  color: #f7c94f;
+  color: #f7c94f !important;
 }
 
 .ki-cached-header {
@@ -199,7 +212,7 @@
   gap: 8px;
   padding: 4px 0 6px;
   border-bottom: 1px solid #333;
-  color: #777;
+  color: #777 !important;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.04em;
@@ -216,12 +229,12 @@
 }
 
 .ki-cached-id {
-  color: #777;
+  color: #777 !important;
   text-align: right;
 }
 
 .ki-cached-size {
-  color: #4ff77a;
+  color: #4ff77a !important;
   text-align: right;
   min-width: 72px;
 }
@@ -239,7 +252,7 @@
   gap: 8px;
   padding: 4px 0 8px;
   border-bottom: 1px solid #333;
-  color: #777;
+  color: #777 !important;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.04em;
@@ -256,13 +269,13 @@
 
 .ki-event-count,
 .ki-event-rate {
-  color: #aaa;
+  color: #aaa !important;
   text-align: right;
   min-width: 56px;
 }
 
 .ki-event-rate {
-  color: #4f8ef7;
+  color: #4f8ef7 !important;
 }
 
 /* Shared */
